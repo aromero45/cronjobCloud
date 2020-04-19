@@ -34,6 +34,12 @@ const database={
   database:process.env.DATABASE
 };
 
+AWS.config.update({
+    region: 'us-east-1',
+    accessKeyId:process.env.ACCES_KEY_ID,
+    secretAccessKey:process.env.SECRET_ACCESS_KEY
+});
+
 const RUTA_GESTOR_ARCHIVOS = process.env.ruta_gestion_archivos;
 const ses = new AWS.SES({ apiVersion: "2010-12-01" });
 
@@ -42,7 +48,7 @@ const pool = require('./database.js');
 const app = express();
 
 //settings 
-app.set('port', process.env.PORT || 4000);
+app.set('port', process.env.PORT || 3000);
 
 //Middlewares
 
@@ -82,63 +88,103 @@ app.use(express.static(path.join(__dirname, 'public')));
 //start de server
 
 
-app.listen(app.get('port'), () => {
-    console.log('Server en puerto', app.get('port'));
-});
+
 
 //cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
-cron.schedule("* * * * *", function() { //se ejecuta cada 10 minutos
+//para 3 minutos */3 
+
+cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
     console.log("running a task every 10 minutes");
   
-    pool.query('SELECT original_video,contest_id from videos WHERE status like ("No Convertido")', function(err,res){
+    pool.query('SELECT original_video,contest_id,email,id from videos WHERE status like ("No Convertido")', function(err,res){
         if(err){
           throw err;
         }else{
             for(ind in res){
-                contestid=res[ind].contest_id;
+                var contestid=res[ind].contest_id;
+                var viid=res[ind].id; 
                 let fileName= res[ind].original_video;
                 let filePath = RUTA_GESTOR_ARCHIVOS+contestid+'/inicial/'+fileName;
-                console.log(filePath);
+                //console.log(filePath);
+                //console.log(viid); 
                 let filePathConverted = RUTA_GESTOR_ARCHIVOS+contestid+'/convertido/'+fileName.split('.')[0]+'.mp4';
-                console.log(filePathConverted);
+                //console.log(filePathConverted);
                 fs.readFile(filePath, function(err,data){
-                    console.log("hola", data)
+                    console.log("File buffer: ", data)
                     if(err){
                         throw err;
                     }else{
-                        console.log('ffmpeg -i ' + filePath +' '+filePathConverted);
+                        //console.log('ffmpeg -i ' + filePath +' '+filePathConverted);
                         exec('ffmpeg -i ' + filePath +' '+filePathConverted,function (error, stdout, stderr) {
+                            console.log("Convirtiendo");
                             console.log(stdout);
                             if (error !== null) {
                              console.log('exec error: ' + error);
+                            }else{
+                                let fileNameConv=fileName.split('.')[0]+'.mp4';
+                                let status = "Convertido"; 
+                                pool.query('UPDATE videos set status = ?, converted_video = ? WHERE id = ?',[status,fileNameConv,viid], function(errores,respuesta){
+                                    if(errores){
+                                        throw errores;
+                                    }else{
+                                        //console.log(respuesta);
+                                        pool.query('SELECT * from contest WHERE id = ?',[contestid], function(error, result){
+                                            if(error){
+                                                throw error
+                                            }else{
+                                                let urlvideo = result[0].url; 
+                                                envioCorreo(res[ind].email, urlvideo);
+                                            }
+                                        }); 
+                                    }
+                                });
                             }
                         });
                     }
                 });
-                /*fs.readdir(RUTA_GESTOR_ARCHIVOS+contestid+'//inicial', (error, files) => { //directorio de los videos
-                    
-                    let totalFilesV = files.length; // return the number of files
-                    console.log(totalFilesV); // print the total number of files
-                    /*for(var i=0; i<totalFilesV; i++)
-                    {
-                        var ext = path.extname(files[i]);
-                        var file = path.basename(files[i],ext);
-                        console.log(files[i]); //print the file
-                        console.log(file);
-                        console.log(ext);
-                        namefiles.push(file); //store the file name into the array files1
-                        extfiles.push(ext);
-                
-                        var child = exec('ffmpeg -i ' + './videos/' + namefiles[i] + extfiles[i] + ' ./converts/' + namefiles[i] + '.mp4',
-                        function (error, stdout, stderr) {
-                            console.log(stdout);
-                            if (error !== null) {
-                             console.log('exec error: ' + error);
-                            }
-                        });
-                    }
-                });*/
             }     
         }
     });
+});
+
+
+function envioCorreo(correo, url) {
+    var params = {
+        Destination: { 
+        ToAddresses: [
+            correo,
+        ]
+        },
+        Source: 'alex4543@hotmail.com',
+        Message: {
+            Body: {
+              Html: {
+                Charset: "UTF-8",
+                Data:
+                  "<html><body><h1>Video Procesado!!</h1> <p>Tu video ha sido procesado, en el concurso: http://elbsmart-400937604.us-east-1.elb.amazonaws.com/videos/"+url+" ..Estas listo para concursar!!'</p></body></html>"
+              },
+              Text: {
+                Charset: "UTF-8",
+                Data: "Hello Charith Sample description time 1517831318946"
+              }
+            },
+            Subject: {
+              Charset: "UTF-8",
+              Data: "Video procesado exitosamente"
+            }
+          }
+    };
+    const sendEmail = ses.sendEmail(params).promise();
+
+    sendEmail
+    .then(data => {
+        console.log("email enviado SES", data);
+    })
+    .catch(error => {
+        console.log(error);
+    });
+}
+
+app.listen(app.get('port'), () => {
+    console.log('Server en puerto', app.get('port'));
 });
