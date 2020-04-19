@@ -93,7 +93,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
 //para 3 minutos */3 
 
-cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
+var task = cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
     console.log("running a task every 10 minutes");
   
     pool.query('SELECT original_video,contest_id,email,id from videos WHERE status like ("No Convertido")', function(err,res){
@@ -184,6 +184,16 @@ function envioCorreo(correo, url) {
         console.log(error);
     });
 }
+
+app.get('/stop', (req,res) => {
+    task.stop();
+    res.send('cron detenido');
+})
+
+app.get('/start', (req,res) => {
+    task.start();
+    res.send('cron iniciado');
+})
 
 app.listen(app.get('port'), () => {
     console.log('Server en puerto', app.get('port'));
