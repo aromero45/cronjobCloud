@@ -93,7 +93,8 @@ app.use(express.static(path.join(__dirname, 'public')));
 //cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
 //para 3 minutos */3 
 
-var task = cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
+//var task = cron.schedule("0,10 * * * *", function() { //se ejecuta cada 10 minutos
+var task = cron.schedule("*/2 * * * *", function() { //se ejecuta cada 10 minutos
     console.log("running a task every 10 minutes");
   
     pool.query('SELECT original_video,contest_id,email,id from videos WHERE status like ("No Convertido")', function(err,res){
