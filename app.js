@@ -168,7 +168,7 @@ function envioCorreo(correo, url) {
               Html: {
                 Charset: "UTF-8",
                 Data:
-                  "<html><body><h1>Video Procesado!!</h1> <p>Tu video ha sido procesado, en el concurso: http://elbsmart-400937604.us-east-1.elb.amazonaws.com/videos/"+url+" ..Estas listo para concursar!!'</p></body></html>"
+                  "<html><body><h1>Video Procesado!!</h1> <p>Tu video ha sido procesado, en el concurso: http://ELB-Smarttools-1952259986.us-east-1.elb.amazonaws.com/videos/"+url+" ..Estas listo para concursar!!'</p></body></html>"
               },
               Text: {
                 Charset: "UTF-8",
