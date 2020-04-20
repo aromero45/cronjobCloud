@@ -112,18 +112,24 @@ var task = cron.schedule("*/2 * * * *", function() { //se ejecuta cada 10 minuto
                 //console.log(filePathConverted);
                 fs.readFile(filePath, function(err,data){
                     console.log("File buffer: ", data)
+                    let status;
                     if(err){
                         throw err;
                     }else{
                         //console.log('ffmpeg -i ' + filePath +' '+filePathConverted);
                         exec('ffmpeg -i ' + filePath +' '+filePathConverted,function (error, stdout, stderr) {
-                            console.log("Convirtiendo");
-                            console.log(stdout);
+                            status = "En Conversion"; 
+                            pool.query('UPDATE videos set status = ? WHERE id = ?',[status,viid], function(errores,respuesta){
+                                if(errores){
+                                    throw errores;
+                                }
+                            });
+                            //console.log(stdout);
                             if (error !== null) {
                              console.log('exec error: ' + error);
                             }else{
                                 let fileNameConv=fileName.split('.')[0]+'.mp4';
-                                let status = "Convertido"; 
+                                status = "Convertido"; 
                                 pool.query('UPDATE videos set status = ?, converted_video = ? WHERE id = ?',[status,fileNameConv,viid], function(errores,respuesta){
                                     if(errores){
                                         throw errores;
